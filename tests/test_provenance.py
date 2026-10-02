@@ -16,7 +16,7 @@ def conn(tmp_path):
 
 @pytest.fixture
 def seeded(conn):
-    seed.seed(conn)
+    seed.demo_data(conn)
     return conn
 
 
@@ -118,3 +118,10 @@ def test_log_keeps_working_after_tamper(seeded):
     tamper.modification(seeded)
     seed.simulate_activity(seeded)  # new events still chain from the stored tail
     assert verify_all(seeded)["status"] == "TAMPERING DETECTED"
+
+
+@pytest.mark.parametrize("scenario", list(tamper.SCENARIOS))
+def test_tamper_on_empty_log_explains_what_is_needed(conn, scenario):
+    seed.seed(conn)  # admin only
+    with pytest.raises(tamper.TamperError, match="log in as a user"):
+        tamper.SCENARIOS[scenario](conn)

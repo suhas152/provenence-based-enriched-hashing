@@ -8,10 +8,14 @@ class TamperError(Exception):
     pass
 
 
+NEED_FILE_ACTIVITY = ("Nothing to tamper with yet: log in as a user (in another window) and "
+                      "open a file, then try again.")
+
+
 def _pick(conn, sql, params=()):
     row = conn.execute(sql, params).fetchone()
     if row is None:
-        raise TamperError("No suitable event found - generate some activity first.")
+        raise TamperError(NEED_FILE_ACTIVITY)
     return dict(row)
 
 

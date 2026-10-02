@@ -216,21 +216,13 @@ def run_tamper(scenario):
     return redirect(url_for("dashboard"))
 
 
-@app.route("/admin/simulate", methods=["POST"])
-@admin_required
-def simulate():
-    seed.simulate_activity(db())
-    flash("Generated normal activity for demo users.", "ok")
-    return redirect(url_for("dashboard"))
-
-
 @app.route("/admin/reset", methods=["POST"])
 @admin_required
 def reset():
     seed.seed(db(), fresh=True)
     admin = db().execute("SELECT user_id FROM Users WHERE role='admin'").fetchone()
     session["sid"] = auth.open_session(db(), admin["user_id"], ip(), request.headers.get("User-Agent"))
-    flash("Database reset to a clean demo log.", "ok")
+    flash("Database reset: empty audit log with only the admin account.", "ok")
     return redirect(url_for("dashboard"))
 
 
