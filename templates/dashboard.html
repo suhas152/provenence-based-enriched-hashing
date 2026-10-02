@@ -23,6 +23,10 @@
   <form class="inline" method="post" action="{{ url_for('run_tamper', scenario=key) }}">
     <button class="btn danger">{{ key.replace('_', ' ').title() }}</button></form>
   {% endfor %}
+  {% if can_undo %}
+  <form class="inline" method="post" action="{{ url_for('undo_tamper') }}">
+    <button class="btn" style="border-color:var(--ok);color:var(--ok)">Undo tampering</button></form>
+  {% endif %}
   <form class="inline" method="post" action="{{ url_for('reset') }}">
     <button class="btn">Reset demo</button></form>
 </div>

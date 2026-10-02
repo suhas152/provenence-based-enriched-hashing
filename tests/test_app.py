@@ -30,5 +30,8 @@ def test_web_flow(tmp_path, monkeypatch):
     assert b"VALID" in client.get("/admin").data
     page = client.post("/admin/tamper/deletion", follow_redirects=True).data
     assert b"TAMPERING DETECTED" in page and b"EVENT_DELETED" in page
+    page = client.post("/admin/undo", follow_redirects=True).data
+    assert b"TAMPERING DETECTED" not in page
+    assert b"Tampering undone" in page
     page = client.post("/admin/reset", follow_redirects=True).data
     assert b"TAMPERING DETECTED" not in page

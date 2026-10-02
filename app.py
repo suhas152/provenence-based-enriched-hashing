@@ -1,11 +1,13 @@
 """Flask web app: user workspace (event capture) + admin security dashboard."""
 import os
+import sqlite3
 from functools import wraps
 
 from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from provenance import auth, seed, tamper
+from provenance import db as dbmod
 from provenance.context import TransitionError
 from provenance.db import connect, now
 from provenance.verify import verify_all
@@ -202,13 +204,15 @@ def dashboard():
     }
     history = c.execute("SELECT * FROM VerificationResults ORDER BY result_id DESC LIMIT 5").fetchall()
     return render_template("dashboard.html", r=report, stats=stats, history=history,
-                           scenarios=tamper.SCENARIOS)
+                           scenarios=tamper.SCENARIOS, can_undo=os.path.exists(snapshot_path()))
 
 
 @app.route("/admin/tamper/<scenario>", methods=["POST"])
 @admin_required
 def run_tamper(scenario):
     fn = tamper.SCENARIOS.get(scenario) or abort(404)
+    if not os.path.exists(snapshot_path()):
+        copy_db(dbmod.DB_PATH, snapshot_path())  # clean copy for "Undo tampering"
     try:
         flash("Tamper applied: " + fn(db()), "error")
     except tamper.TamperError as e:
@@ -216,9 +220,33 @@ def run_tamper(scenario):
     return redirect(url_for("dashboard"))
 
 
+def snapshot_path():
+    return dbmod.DB_PATH + ".snapshot"
+
+
+def copy_db(src, dst):
+    a, b = sqlite3.connect(src), sqlite3.connect(dst)
+    a.backup(b)
+    a.close()
+    b.close()
+
+
+@app.route("/admin/undo", methods=["POST"])
+@admin_required
+def undo_tamper():
+    if os.path.exists(snapshot_path()):
+        g.pop("db").close()
+        copy_db(snapshot_path(), dbmod.DB_PATH)
+        os.remove(snapshot_path())
+        flash("Tampering undone: audit log restored to its state before the first tamper.", "ok")
+    return redirect(url_for("dashboard"))
+
+
 @app.route("/admin/reset", methods=["POST"])
 @admin_required
 def reset():
+    if os.path.exists(snapshot_path()):
+        os.remove(snapshot_path())
     seed.seed(db(), fresh=True)
     admin = db().execute("SELECT user_id FROM Users WHERE role='admin'").fetchone()
     session["sid"] = auth.open_session(db(), admin["user_id"], ip(), request.headers.get("User-Agent"))
