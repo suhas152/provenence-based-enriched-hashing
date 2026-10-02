@@ -35,3 +35,6 @@ def test_web_flow(tmp_path, monkeypatch):
     assert b"Tampering undone" in page
     page = client.post("/admin/reset", follow_redirects=True).data
     assert b"TAMPERING DETECTED" not in page
+    # empty log: tamper is refused and leaves nothing to undo
+    page = client.post("/admin/tamper/modification", follow_redirects=True).data
+    assert b"Nothing to tamper with yet" in page and b"Undo tampering" not in page

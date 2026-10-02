@@ -211,11 +211,14 @@ def dashboard():
 @admin_required
 def run_tamper(scenario):
     fn = tamper.SCENARIOS.get(scenario) or abort(404)
-    if not os.path.exists(snapshot_path()):
+    new_snapshot = not os.path.exists(snapshot_path())
+    if new_snapshot:
         copy_db(dbmod.DB_PATH, snapshot_path())  # clean copy for "Undo tampering"
     try:
         flash("Tamper applied: " + fn(db()), "error")
     except tamper.TamperError as e:
+        if new_snapshot:
+            os.remove(snapshot_path())  # nothing changed, so nothing to undo
         flash(str(e), "error")
     return redirect(url_for("dashboard"))
 
