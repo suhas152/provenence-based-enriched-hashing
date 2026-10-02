@@ -7,7 +7,7 @@ SHA-256 hash chain, sealed into Merkle batches, and verified with 8 integrity ch
 ```bash
 pip install -r requirements.txt
 python app.py            # http://localhost:5000
-python -m pytest -q      # 14 tests incl. all 5 tampering scenarios
+python -m pytest -q      # 19 tests incl. all 5 tampering scenarios
 ```
 On first start only the admin account exists (`admin / admin123`, set `ADMIN_PASSWORD` to change).
 The audit log starts with a single event (the admin's Register); everything else is created live.
