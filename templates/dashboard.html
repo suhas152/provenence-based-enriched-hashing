@@ -24,8 +24,7 @@
   <form class="inline" method="post" action="{{ url_for('run_tamper', scenario=key) }}">
     <button class="btn danger">{{ key.replace('_', ' ').title() }}</button></form>
   {% endfor %}
-  <form class="inline" method="post" action="{{ url_for('reset') }}"
-        onsubmit="return confirm('Wipe the database and recreate the clean demo log?')">
+  <form class="inline" method="post" action="{{ url_for('reset') }}">
     <button class="btn">Reset demo</button></form>
 </div>
 

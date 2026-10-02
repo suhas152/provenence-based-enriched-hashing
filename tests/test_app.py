@@ -21,6 +21,8 @@ def test_web_flow(tmp_path, monkeypatch):
     assert client.get(f"/files/{doc_id}").status_code == 200  # Open File
     assert b"Saved." in client.post(f"/files/{doc_id}/edit", data={"content": "hi"},
                                     follow_redirects=True).data
+    client.get(f"/files/{doc_id}")
+    assert b"Deleted" in client.post(f"/files/{doc_id}/delete", follow_redirects=True).data
     assert client.get("/admin").status_code == 403
     client.post("/logout")
 

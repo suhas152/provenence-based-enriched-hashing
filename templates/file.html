@@ -6,8 +6,7 @@
     <textarea name="content" rows="10" style="width:100%;box-sizing:border-box">{{ doc.content }}</textarea>
     <p><button class="btn">Save (Edit File)</button></p>
   </form>
-  <form method="post" action="{{ url_for('delete_file', doc_id=doc.doc_id) }}"
-        onsubmit="return confirm('Delete {{ doc.name }}?')">
+  <form method="post" action="{{ url_for('delete_file', doc_id=doc.doc_id) }}">
     <button class="btn danger">Delete file</button>
   </form>
   <p><a href="{{ url_for('workspace') }}">&larr; Back</a></p>
