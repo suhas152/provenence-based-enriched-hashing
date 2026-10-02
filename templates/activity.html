@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card scroll">
+  <h2>My audit trail</h2>
+  <table>
+    <tr><th>Seq</th><th>Event ID</th><th>Event</th><th>Previous event</th><th>Session</th>
+        <th>Timestamp (UTC)</th><th>IP</th><th>Details</th><th>Hash</th></tr>
+    {% for e in rows %}
+    <tr><td>{{ e.sequence_number }}</td><td>{{ e.event_id }}</td><td>{{ e.event_type }}</td>
+        <td>{{ e.previous_event or '—' }}</td><td>{{ e.session_id or '—' }}</td>
+        <td class="mono">{{ e.timestamp[:19] }}</td><td>{{ e.ip_address }}</td><td>{{ e.details or '' }}</td>
+        <td class="mono">{{ e.current_hash[:12] }}…</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

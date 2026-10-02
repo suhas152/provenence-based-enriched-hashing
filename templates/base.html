@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provenance-Pro</title>
+<style>
+  :root { --ok:#137333; --ok-bg:#e6f4ea; --bad:#c5221f; --bad-bg:#fce8e6; --line:#ddd; --muted:#666; }
+  body { font-family: system-ui, sans-serif; margin: 0; background: #f7f7f8; color: #222; }
+  header { background: #1f2937; color: #fff; padding: 10px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  header a, header button { color: #fff; text-decoration: none; background: none; border: 0; font: inherit; cursor: pointer; }
+  header .brand { font-weight: 700; margin-right: auto; }
+  main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px; margin-bottom: 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: #f0f0f2; }
+  .scroll { overflow-x: auto; }
+  .ok { color: var(--ok); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; }
+  tr.bad-row { background: var(--bad-bg); }
+  .flash { padding: 8px 12px; border-radius: 4px; margin-bottom: 10px; }
+  .flash.ok { background: var(--ok-bg); } .flash.error { background: var(--bad-bg); color: var(--bad); }
+  input, textarea { padding: 7px; border: 1px solid #bbb; border-radius: 4px; font: inherit; }
+  button.btn { padding: 7px 12px; border: 1px solid #888; border-radius: 4px; background: #fff; cursor: pointer; font: inherit; }
+  button.danger { border-color: var(--bad); color: var(--bad); }
+  .mono { font-family: ui-monospace, monospace; font-size: 12px; }
+  .muted { color: var(--muted); }
+  form.inline { display: inline; }
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">Provenance-Pro</span>
+  {% if g.user %}
+    {% if g.user.role == 'admin' %}<a href="{{ url_for('dashboard') }}">Dashboard</a>{% endif %}
+    <a href="{{ url_for('workspace') }}">Files</a>
+    <a href="{{ url_for('activity') }}">My activity</a>
+    <span class="muted" style="color:#bbb">{{ g.user.username }} ({{ g.user.user_id }}) · {{ g.sess.session_id }}</span>
+    <form class="inline" method="post" action="{{ url_for('logout') }}"><button>Logout</button></form>
+  {% else %}
+    <a href="{{ url_for('login') }}">Login</a><a href="{{ url_for('register') }}">Register</a>
+  {% endif %}
+</header>
+<main>
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

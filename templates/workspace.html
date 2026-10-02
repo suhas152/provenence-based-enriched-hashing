@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>My files</h2>
+  <p class="muted">Every open, edit, delete and query is captured into the tamper-evident audit log.</p>
+  <table>
+    <tr><th>File</th><th>Last updated</th><th></th></tr>
+    {% for d in docs %}
+    <tr><td>{{ d.name }}</td><td class="mono">{{ d.updated_at[:19] }}</td>
+        <td><a href="{{ url_for('open_file', doc_id=d.doc_id) }}">Open</a></td></tr>
+    {% else %}
+    <tr><td colspan="3" class="muted">No files.</td></tr>
+    {% endfor %}
+  </table>
+  <form method="post" action="{{ url_for('create_file') }}" style="margin-top:12px">
+    <input name="name" placeholder="new-file.txt" required> <button class="btn">Create file</button>
+  </form>
+</div>
+{% endblock %}

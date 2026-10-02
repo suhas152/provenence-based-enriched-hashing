@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+{% set valid = r.status == 'VALID' %}
+<div class="card" style="background: {{ 'var(--ok-bg)' if valid else 'var(--bad-bg)' }}; text-align:center">
+  <div class="{{ 'ok' if valid else 'bad' }}" style="font-size:28px">{{ r.status }}</div>
+  <div class="muted">Verified {{ r.verified_at[:19] }} UTC · 8 checks over {{ r.total_events }} events and {{ stats.batches }} Merkle batches</div>
+  {% if not valid %}<div class="bad" style="margin-top:6px">Failure types: {{ r.failure_types | join(', ') }}</div>{% endif %}
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>Total events</th><th>Total users</th><th>Active sessions</th><th>Valid logs</th><th>Tampered logs</th><th>Merkle batches</th></tr>
+    <tr style="font-size:20px">
+      <td>{{ stats.total_events }}</td><td>{{ stats.total_users }}</td><td>{{ stats.active_sessions }}</td>
+      <td class="ok">{{ stats.valid_logs }}</td><td class="{{ 'bad' if stats.tampered_logs else '' }}">{{ stats.tampered_logs }}</td>
+      <td>{{ stats.batches }}</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Tampering demo</h3>
+  <form class="inline" method="post" action="{{ url_for('simulate') }}"><button class="btn">+ Generate normal activity</button></form>
+  {% for key in scenarios %}
+  <form class="inline" method="post" action="{{ url_for('run_tamper', scenario=key) }}">
+    <button class="btn danger">{{ key.replace('_', ' ').title() }}</button></form>
+  {% endfor %}
+  <form class="inline" method="post" action="{{ url_for('reset') }}"
+        onsubmit="return confirm('Wipe the database and recreate the clean demo log?')">
+    <button class="btn">Reset demo</button></form>
+</div>
+
+{% if r.first_failed %}
+{% set f = r.first_failed %}
+<div class="card" style="border-color: var(--bad)">
+  <h3 style="margin-top:0" class="bad">First failed record</h3>
+  <table>
+    <tr><th>Event ID</th><th>Seq</th><th>Event</th><th>Batch ID</th><th>Timestamp</th><th>User ID</th><th>Session ID</th><th>Status</th></tr>
+    <tr><td>{{ f.event_id }}</td><td>{{ f.sequence_number or '—' }}</td><td>{{ f.event_type }}</td><td>{{ f.batch_id or '—' }}</td>
+        <td class="mono">{{ (f.timestamp or '—')[:19] }}</td><td>{{ f.user_id or '—' }}</td><td>{{ f.session_id or '—' }}</td>
+        <td class="bad">{{ f.status }}</td></tr>
+  </table>
+  <ul>{% for x in f.failures %}<li><b>{{ x.code }}</b> (check {{ x.check }}: {{ x.check_name }}) — {{ x.message }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3 style="margin-top:0">Verification checks</h3>
+  <table>
+    <tr><th>#</th><th>Check</th><th>Result</th></tr>
+    {% for c in r.checks %}
+    <tr><td>{{ c.id }}</td><td>{{ c.name }}</td>
+        <td class="{{ 'ok' if not c.failures else 'bad' }}">{{ 'PASS' if not c.failures else 'FAIL (' ~ c.failures ~ ')' }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% if r.deleted %}
+<div class="card"><h3 style="margin-top:0" class="bad">Deleted records (in HashChain ledger, missing from log)</h3>
+  <ul>{% for d in r.deleted %}<li>Event #{{ d.event_id }} at sequence {{ d.sequence_number }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+<div class="card scroll">
+  <h3 style="margin-top:0">Merkle batches</h3>
+  <table>
+    <tr><th>Batch ID</th><th>Start event</th><th>End event</th><th>Events</th><th>Stored root</th><th>Recomputed root</th><th>Created</th><th>Status</th></tr>
+    {% for b in r.batches|reverse %}
+    <tr class="{{ '' if b.status == 'VALID' else 'bad-row' }}">
+      <td>{{ b.batch_id }}</td><td>{{ b.start_event }}</td><td>{{ b.end_event }}</td><td>{{ b.members }}/{{ b.event_count }}</td>
+      <td class="mono">{{ b.merkle_root[:16] }}…</td><td class="mono">{{ b.computed_root[:16] }}…</td>
+      <td class="mono">{{ b.created_at[:19] }}</td>
+      <td class="{{ 'ok' if b.status == 'VALID' else 'bad' }}">{{ b.status }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card scroll">
+  <h3 style="margin-top:0">Audit log</h3>
+  <table>
+    <tr><th>Seq</th><th>Event ID</th><th>Event</th><th>Previous event</th><th>User</th><th>Session</th><th>Timestamp (UTC)</th>
+        <th>IP</th><th>Batch</th><th>Prev hash</th><th>Hash</th><th>Status</th></tr>
+    {% for e in r.events|reverse %}
+    <tr class="{{ 'bad-row' if e.failures else '' }}">
+      <td>{{ e.sequence_number }}</td><td>{{ e.event_id }}</td><td>{{ e.event_type }}</td><td>{{ e.previous_event or '—' }}</td>
+      <td>{{ e.user_id or '—' }}</td><td>{{ e.session_id or '—' }}</td><td class="mono">{{ e.timestamp[:19] }}</td>
+      <td>{{ e.ip_address }}</td><td>{{ e.batch_id or 'pending' }}</td>
+      <td class="mono">{{ e.previous_hash[:10] }}…</td><td class="mono">{{ e.current_hash[:10] }}…</td>
+      <td>{% if e.failures %}<span class="bad">TAMPERED</span><br><span class="mono">{{ e.failures|map(attribute='code')|join(', ') }}</span>
+          {% else %}<span class="ok">VALID</span>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Recent verification runs</h3>
+  <table>
+    <tr><th>Time</th><th>Status</th><th>Events</th><th>Valid</th><th>Tampered</th><th>First failed</th></tr>
+    {% for h in history %}
+    <tr><td class="mono">{{ h.verified_at[:19] }}</td><td class="{{ 'ok' if h.status == 'VALID' else 'bad' }}">{{ h.status }}</td>
+        <td>{{ h.total_events }}</td><td>{{ h.valid_logs }}</td><td>{{ h.tampered_logs }}</td><td>{{ h.first_failed_event or '—' }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}
