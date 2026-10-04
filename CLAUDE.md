@@ -10,11 +10,12 @@ Stack: Python 3.12 + Flask + SQLite (stdlib `sqlite3`, no ORM). Deployed with gu
 - `provenance/merkle.py` — Module 4: Merkle roots, batching (BATCH_SIZE events per batch)
 - `provenance/verify.py` — Module 5: 8-check verification engine
 - `provenance/tamper.py` — the 5 tampering scenarios (edit the DB directly)
-- `provenance/seed.py` — demo users + activity
+- `provenance/company.py` — Acme Corp shared drive content (incl. a tiny PDF generator)
+- `provenance/seed.py` — schema + company drive + admin; demo users/activity for tests
 - `app.py` — Flask routes; `templates/` — plain HTML
 
 ## Rules
-- Keep scope to SPEC.md. No extra features, no fancy UI.
+- Keep scope to SPEC.md. UI is a dark, company-style theme defined in `templates/base.html` (tokens on `:root`).
 - Library functions take a `conn` argument; Flask opens one per request.
 - Run tests: `python -m pytest -q`
 - Run locally: `python app.py` → http://localhost:5000 (admin / admin123 unless ADMIN_PASSWORD set)

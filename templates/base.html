@@ -1,49 +1,174 @@
-<!doctype html>
-<html lang="en">
+{% from "_icons.html" import icon, flashes %}<!doctype html>
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Provenance-Pro</title>
+<title>{% block title %}Provenance-Pro{% endblock %} · {{ COMPANY_NAME }}</title>
+<script>try { var t = localStorage.getItem('pp-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root { --ok:#137333; --ok-bg:#e6f4ea; --bad:#c5221f; --bad-bg:#fce8e6; --line:#ddd; --muted:#666; }
-  body { font-family: system-ui, sans-serif; margin: 0; background: #f7f7f8; color: #222; }
-  header { background: #1f2937; color: #fff; padding: 10px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-  header a, header button { color: #fff; text-decoration: none; background: none; border: 0; font: inherit; cursor: pointer; }
-  header .brand { font-weight: 700; margin-right: auto; }
-  main { max-width: 1200px; margin: 0 auto; padding: 16px; }
-  .card { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px; margin-bottom: 14px; }
-  table { border-collapse: collapse; width: 100%; font-size: 13px; }
-  th, td { border-bottom: 1px solid var(--line); padding: 5px 7px; text-align: left; vertical-align: top; }
-  th { background: #f0f0f2; }
-  .scroll { overflow-x: auto; }
-  .ok { color: var(--ok); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; }
-  tr.bad-row { background: var(--bad-bg); }
-  .flash { padding: 8px 12px; border-radius: 4px; margin-bottom: 10px; }
-  .flash.ok { background: var(--ok-bg); } .flash.error { background: var(--bad-bg); color: var(--bad); }
-  input, textarea { padding: 7px; border: 1px solid #bbb; border-radius: 4px; font: inherit; }
-  button.btn { padding: 7px 12px; border: 1px solid #888; border-radius: 4px; background: #fff; cursor: pointer; font: inherit; }
-  button.danger { border-color: var(--bad); color: var(--bad); }
-  .mono { font-family: ui-monospace, monospace; font-size: 12px; }
-  .muted { color: var(--muted); }
-  form.inline { display: inline; }
+:root, [data-theme="dark"] {
+  --bg: #0a0f1c; --bg-grad: radial-gradient(1200px 600px at 10% -10%, #14234a 0%, transparent 60%);
+  --surface: #111827; --surface-2: #162036; --surface-3: #1c2843;
+  --border: #22304f; --border-strong: #2e3f66;
+  --text: #e6ebf5; --text-2: #aab4cc; --muted: #7c89a8;
+  --accent: #4f8cff; --accent-2: #7aa7ff; --accent-soft: rgba(79,140,255,.14);
+  --ok: #22c55e; --ok-soft: rgba(34,197,94,.13); --bad: #f04545; --bad-soft: rgba(240,69,69,.13);
+  --warn: #f5a524; --warn-soft: rgba(245,165,36,.13);
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  --bg: #f4f6fb; --bg-grad: radial-gradient(1200px 600px at 10% -10%, #dfe8ff 0%, transparent 60%);
+  --surface: #ffffff; --surface-2: #f7f9fd; --surface-3: #eef2fa;
+  --border: #e1e6f0; --border-strong: #cdd5e5;
+  --text: #0f172a; --text-2: #334155; --muted: #64748b;
+  --accent: #2f6fec; --accent-2: #1d5bd8; --accent-soft: rgba(47,111,236,.1);
+  --ok: #16a34a; --ok-soft: rgba(22,163,74,.1); --bad: #dc2626; --bad-soft: rgba(220,38,38,.09);
+  --warn: #d97706; --warn-soft: rgba(217,119,6,.1);
+  --shadow: 0 1px 2px rgba(15,23,42,.06), 0 6px 20px rgba(15,23,42,.06);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5;
+       background: var(--bg); background-image: var(--bg-grad); background-attachment: fixed; color: var(--text); }
+a { color: var(--accent-2); text-decoration: none; } a:hover { text-decoration: underline; }
+.mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; }
+.muted { color: var(--muted); } .ok { color: var(--ok); } .bad { color: var(--bad); }
+.ico { flex: none; vertical-align: middle; }
+
+/* App shell */
+.shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+.sidebar { background: color-mix(in srgb, var(--surface) 88%, transparent); border-right: 1px solid var(--border);
+           padding: 18px 14px; display: flex; flex-direction: column; gap: 6px; position: sticky; top: 0; height: 100vh; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; }
+.brand-mark { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; color: #fff;
+              background: linear-gradient(135deg, #4f8cff, #7c5cff); box-shadow: 0 6px 18px rgba(79,140,255,.35); }
+.brand b { display: block; font-size: 15px; letter-spacing: -.01em; } .brand small { color: var(--muted); font-size: 11.5px; }
+.nav-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 12px 10px 4px; }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--text-2); font-weight: 500; }
+.nav a:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+.nav a.active { background: var(--accent-soft); color: var(--accent-2); }
+.sidebar-foot { margin-top: auto; border-top: 1px solid var(--border); padding-top: 12px; display: grid; gap: 8px; }
+.userchip { display: flex; align-items: center; gap: 10px; padding: 6px 8px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700;
+          background: var(--surface-3); color: var(--accent-2); text-transform: uppercase; }
+.userchip b { display: block; font-size: 13px; } .userchip small { color: var(--muted); font-size: 11.5px; }
+.main { min-width: 0; }
+.topbar { display: flex; align-items: center; gap: 12px; padding: 14px 28px; border-bottom: 1px solid var(--border);
+          background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(8px); position: sticky; top: 0; z-index: 5; }
+.topbar h1 { font-size: 17px; margin: 0; letter-spacing: -.01em; } .topbar .sp { flex: 1; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px;
+        border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); white-space: nowrap; }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.content { padding: 24px 28px 48px; max-width: 1320px; }
+
+/* Components */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 18px; }
+.card-h { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.card-h h2 { font-size: 14.5px; margin: 0; font-weight: 600; } .card-h .sp { flex: 1; }
+.card-b { padding: 16px 18px; }
+.btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; font: inherit; font-weight: 500;
+       cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); white-space: nowrap; }
+.btn:hover { background: var(--surface-3); text-decoration: none; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; } .btn-primary:hover { background: var(--accent-2); }
+.btn-danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); background: var(--bad-soft); }
+.btn-danger:hover { background: color-mix(in srgb, var(--bad) 22%, transparent); }
+.btn-ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: var(--ok-soft); }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+.btn-sm { padding: 5px 10px; font-size: 12.5px; }
+input[type=text], input[type=password], input:not([type]), textarea, select {
+  width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface-2);
+  color: var(--text); font: inherit; outline: none; transition: border-color .15s, box-shadow .15s; }
+input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+textarea { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 13px; line-height: 1.6; resize: vertical; }
+label { display: block; font-size: 12.5px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; }
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; letter-spacing: .02em; }
+.b-ok { background: var(--ok-soft); color: var(--ok); } .b-bad { background: var(--bad-soft); color: var(--bad); }
+.b-warn { background: var(--warn-soft); color: var(--warn); } .b-info { background: var(--accent-soft); color: var(--accent-2); }
+.b-muted { background: var(--surface-3); color: var(--text-2); }
+.fbadge { display: inline-grid; place-items: center; width: 38px; height: 26px; border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: .03em; }
+.fbadge { background: var(--accent-soft); color: var(--accent-2); }
+.fb-pdf { background: rgba(240,69,69,.16); color: #ff6b6b; } .fb-csv { background: rgba(34,197,94,.15); color: #34d27a; }
+.fb-md { background: rgba(124,92,255,.17); color: #a08bff; }
+
+table { border-collapse: collapse; width: 100%; }
+th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600;
+     padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+tr.row-bad td { background: var(--bad-soft); } tr.row-bad:hover td { background: color-mix(in srgb, var(--bad) 18%, transparent); }
+.table-wrap { overflow-x: auto; }
+
+.flash { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; margin-bottom: 14px; border: 1px solid; font-weight: 500; }
+.flash.ok { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 35%, transparent); color: var(--ok); }
+.flash.error { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 35%, transparent); color: var(--bad); }
+form.inline { display: inline; }
+.grid { display: grid; gap: 14px; }
+.empty { text-align: center; padding: 36px 16px; color: var(--muted); }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px 12px; gap: 4px; }
+  .brand { padding: 0 8px 0 0; } .nav-label, .sidebar-foot .userchip { display: none; }
+  .nav { display: flex; flex-wrap: wrap; gap: 2px; } .sidebar-foot { margin: 0 0 0 auto; border: 0; padding: 0; display: flex; }
+  .topbar, .content { padding-left: 16px; padding-right: 16px; }
+}
+{% block styles %}{% endblock %}
 </style>
 </head>
 <body>
-<header>
-  <span class="brand">Provenance-Pro</span>
-  {% if g.user %}
-    {% if g.user.role == 'admin' %}<a href="{{ url_for('dashboard') }}">Dashboard</a>{% endif %}
-    <a href="{{ url_for('workspace') }}">Files</a>
-    <a href="{{ url_for('activity') }}">My activity</a>
-    <span class="muted" style="color:#bbb">{{ g.user.username }} ({{ g.user.user_id }}) · {{ g.sess.session_id }}</span>
-    <form class="inline" method="post" action="{{ url_for('logout') }}"><button>Logout</button></form>
-  {% else %}
-    <a href="{{ url_for('login') }}">Login</a><a href="{{ url_for('register') }}">Register</a>
-  {% endif %}
-</header>
-<main>
-  {% for cat, msg in get_flashed_messages(with_categories=true) %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
-  {% block content %}{% endblock %}
-</main>
+{% if g.user %}
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">{{ icon('shield-check', 20) }}</div>
+      <div><b>Provenance-Pro</b><small>{{ COMPANY_NAME }} · Secure Audit</small></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Workspace</div>
+      {% if g.user.role == 'admin' %}
+      <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">{{ icon('grid') }} Security Center</a>
+      {% endif %}
+      <a href="{{ url_for('workspace') }}" class="{{ 'active' if request.endpoint in ('workspace', 'open_file') }}">{{ icon('folder') }} Company Drive</a>
+      <a href="{{ url_for('activity') }}" class="{{ 'active' if request.endpoint == 'activity' }}">{{ icon('activity') }} My Activity</a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="userchip">
+        <div class="avatar">{{ g.user.username[:1] }}</div>
+        <div><b>{{ g.user.username }}</b><small>{{ g.user.user_id }} · {{ g.user.role|capitalize }}</small></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="toggleTheme()">{{ icon('moon', 15) }} Theme</button>
+      <form method="post" action="{{ url_for('logout') }}"><button class="btn btn-ghost btn-sm">{{ icon('logout', 15) }} Sign out</button></form>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <h1>{% block heading %}{% endblock %}</h1>
+      <span class="sp"></span>
+      <span class="pill" title="Your current audit session"><span class="dot"></span>Session {{ g.sess.session_id }}</span>
+      <span class="pill mono" title="IP recorded with every event">{{ icon('globe', 13) }} {{ request.headers.get('CF-Connecting-IP') or request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0] }}</span>
+    </header>
+    <main class="content">
+      {{ flashes() }}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% else %}
+  {% block public %}{% endblock %}
+{% endif %}
+<script>
+function toggleTheme() {
+  var next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem('pp-theme', next); } catch (e) {}
+}
+</script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

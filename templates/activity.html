@@ -1,16 +1,29 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}My Activity{% endblock %}
+{% block heading %}My Activity{% endblock %}
 {% block content %}
-<div class="card scroll">
-  <h2>My audit trail</h2>
-  <table>
-    <tr><th>Seq</th><th>Event ID</th><th>Event</th><th>Previous event</th><th>Session</th>
-        <th>Timestamp (UTC)</th><th>IP</th><th>Details</th><th>Hash</th></tr>
-    {% for e in rows %}
-    <tr><td>{{ e.sequence_number }}</td><td>{{ e.event_id }}</td><td>{{ e.event_type }}</td>
-        <td>{{ e.previous_event or '—' }}</td><td>{{ e.session_id or '—' }}</td>
-        <td class="mono">{{ e.timestamp[:19] }}</td><td>{{ e.ip_address }}</td><td>{{ e.details or '' }}</td>
-        <td class="mono">{{ e.current_hash[:12] }}…</td></tr>
-    {% endfor %}
-  </table>
+<div class="card">
+  <div class="card-h">{{ icon('activity') }}<h2>Your audit trail</h2><span class="sp"></span>
+    <span class="muted" style="font-size:12.5px">Viewing this page is itself logged as <b>Database Access</b></span></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Seq</th><th>Event</th><th>Previous event</th><th>Session</th><th>Timestamp (UTC)</th><th>IP</th><th>Details</th><th>Hash</th></tr></thead>
+      <tbody>
+      {% for e in rows %}
+      <tr>
+        <td class="mono">{{ e.sequence_number }}</td>
+        <td><b>{{ e.event_type }}</b></td>
+        <td class="muted">{{ e.previous_event or '—' }}</td>
+        <td class="mono">{{ e.session_id or '—' }}</td>
+        <td class="mono muted">{{ e.timestamp[:19]|replace('T', ' ') }}</td>
+        <td class="mono muted">{{ e.ip_address }}</td>
+        <td class="muted">{{ (e.details or '')|replace('doc=', '') }}</td>
+        <td class="mono muted" title="{{ e.current_hash }}">{{ e.current_hash[:12] }}…</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

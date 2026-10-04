@@ -73,9 +73,13 @@ CREATE TABLE IF NOT EXISTS VerificationResults (
 );
 CREATE TABLE IF NOT EXISTS Documents (
     doc_id     INTEGER PRIMARY KEY AUTOINCREMENT,
-    owner_id   TEXT NOT NULL,
+    owner_id   TEXT NOT NULL,              -- a user ID, or 'COMPANY' for the shared drive
+    folder     TEXT NOT NULL DEFAULT 'My Files',
     name       TEXT NOT NULL,
+    kind       TEXT NOT NULL DEFAULT 'text', -- 'text' (txt/md/csv) or 'pdf'
     content    TEXT NOT NULL DEFAULT '',
+    data       BLOB,
+    size       INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL,
     deleted    INTEGER NOT NULL DEFAULT 0
 );
@@ -97,6 +101,13 @@ def connect(path=None):
 
 def init_db(conn):
     conn.executescript(SCHEMA)
+    # Upgrade databases created before the company drive existed.
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(Documents)")}
+    for col, ddl in [("folder", "TEXT NOT NULL DEFAULT 'My Files'"),
+                     ("kind", "TEXT NOT NULL DEFAULT 'text'"),
+                     ("data", "BLOB"), ("size", "INTEGER NOT NULL DEFAULT 0")]:
+        if col not in cols:
+            conn.execute(f"ALTER TABLE Documents ADD COLUMN {col} {ddl}")
 
 
 @contextmanager

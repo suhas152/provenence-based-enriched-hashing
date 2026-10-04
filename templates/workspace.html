@@ -1,19 +1,61 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon, file_badge %}
+{% block title %}Company Drive{% endblock %}
+{% block heading %}Company Drive{% endblock %}
+{% block styles %}
+.drive { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 18px; align-items: start; }
+.folders a { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; color: var(--text-2); }
+.folders a:hover { background: var(--surface-2); text-decoration: none; }
+.folders a.active { background: var(--accent-soft); color: var(--accent-2); }
+.folders .count { margin-left: auto; font-size: 12px; color: var(--muted); }
+.fname { display: flex; align-items: center; gap: 12px; font-weight: 500; color: var(--text); }
+.fname:hover { color: var(--accent-2); text-decoration: none; }
+.newfile { display: flex; gap: 8px; } .newfile input { max-width: 240px; }
+@media (max-width: 1100px) { .drive { grid-template-columns: minmax(0, 1fr); } .folders .card-b { display: flex; flex-wrap: wrap; gap: 4px; } .folders .count { margin-left: 6px; } }
+@media (max-width: 900px) { .newfile input { max-width: none; } }
+{% endblock %}
+{% macro fsize(n) %}{{ '%.1f KB'|format(n / 1024) if n >= 1024 else n ~ ' B' }}{% endmacro %}
 {% block content %}
-<div class="card">
-  <h2>My files</h2>
-  <p class="muted">Every open, edit, delete and query is captured into the tamper-evident audit log.</p>
-  <table>
-    <tr><th>File</th><th>Last updated</th><th></th></tr>
-    {% for d in docs %}
-    <tr><td>{{ d.name }}</td><td class="mono">{{ d.updated_at[:19] }}</td>
-        <td><a href="{{ url_for('open_file', doc_id=d.doc_id) }}">Open</a></td></tr>
-    {% else %}
-    <tr><td colspan="3" class="muted">No files.</td></tr>
-    {% endfor %}
-  </table>
-  <form method="post" action="{{ url_for('create_file') }}" style="margin-top:12px">
-    <input name="name" placeholder="new-file.txt" required> <button class="btn">Create file</button>
-  </form>
+<div class="drive">
+  <div class="card folders">
+    <div class="card-b" style="padding:8px">
+      <a href="{{ url_for('workspace') }}" class="{{ 'active' if not current }}">{{ icon('layers', 16) }} All files <span class="count">{{ total }}</span></a>
+      {% for f, n in folders|dictsort %}
+      <a href="{{ url_for('workspace', folder=f) }}" class="{{ 'active' if current == f }}">{{ icon('user' if f == 'My Files' else 'folder', 16) }} {{ f }} <span class="count">{{ n }}</span></a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">
+      <h2>{{ current or 'All files' }}</h2>
+      <span class="badge b-muted">{{ docs|length }} item{{ '' if docs|length == 1 else 's' }}</span>
+      <span class="sp"></span>
+      <form class="newfile" method="post" action="{{ url_for('create_file') }}">
+        <input name="name" placeholder="new-document.txt" required>
+        <button class="btn btn-primary">{{ icon('plus', 16) }} New file</button>
+      </form>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Folder</th><th>Owner</th><th>Size</th><th>Modified (UTC)</th><th></th></tr></thead>
+        <tbody>
+        {% for d in docs %}
+        <tr>
+          <td><a class="fname" href="{{ url_for('open_file', doc_id=d.doc_id) }}">{{ file_badge(d.name, d.kind) }} {{ d.name }}</a></td>
+          <td class="muted">{{ d.folder }}</td>
+          <td>{% if d.owner_id == COMPANY_OWNER %}<span class="badge b-info">{{ COMPANY_NAME }}</span>{% else %}<span class="badge b-muted">You</span>{% endif %}</td>
+          <td class="muted">{{ fsize(d.size) }}</td>
+          <td class="mono muted">{{ d.updated_at[:16]|replace('T', ' ') }}</td>
+          <td style="text-align:right"><a class="btn btn-sm" href="{{ url_for('open_file', doc_id=d.doc_id) }}">Open</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="empty">{{ icon('folder', 28) }}<p>No files here yet.</p></div></td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
+<p class="muted" style="font-size:12.5px">{{ icon('shield', 14) }} Opening, editing, creating and deleting files is recorded in the tamper-evident audit log.</p>
 {% endblock %}

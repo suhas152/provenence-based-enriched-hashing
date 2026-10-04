@@ -1,14 +1,69 @@
 {% extends "base.html" %}
-{% block content %}
-<div class="card" style="max-width:360px;margin:40px auto">
-  <h2>{{ 'Create account' if mode == 'register' else 'Login' }}</h2>
-  <form method="post">
-    <p><input name="username" placeholder="Username" required style="width:100%;box-sizing:border-box"></p>
-    <p><input name="password" type="password" placeholder="Password" required style="width:100%;box-sizing:border-box"></p>
-    <button class="btn">{{ 'Register' if mode == 'register' else 'Login' }}</button>
-  </form>
-  {% if mode == 'login' %}
-  <p class="muted">No account? <a href="{{ url_for('register') }}">Register</a></p>
-  {% endif %}
+{% from "_icons.html" import icon, flashes %}
+{% block title %}{{ 'Create account' if mode == 'register' else 'Sign in' }}{% endblock %}
+{% block styles %}
+.auth { display: grid; grid-template-columns: 1.1fr 1fr; min-height: 100vh; }
+.auth-hero { position: relative; overflow: hidden; padding: 48px 56px; display: flex; flex-direction: column;
+             background: linear-gradient(160deg, #0d1a3a 0%, #0a0f1c 70%); border-right: 1px solid var(--border); color: #e6ebf5; }
+.auth-hero::before { content: ""; position: absolute; inset: 0; opacity: .5;
+  background-image: linear-gradient(rgba(79,140,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(79,140,255,.08) 1px, transparent 1px);
+  background-size: 36px 36px; mask-image: radial-gradient(600px 400px at 30% 40%, #000 30%, transparent 75%); }
+.auth-hero > * { position: relative; }
+.auth-hero h1 { font-size: 34px; line-height: 1.15; letter-spacing: -.02em; margin: auto 0 14px; max-width: 460px; }
+.auth-hero h1 span { background: linear-gradient(90deg, #7aa7ff, #a58bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.auth-hero p { color: #aab4cc; max-width: 440px; margin: 0 0 28px; }
+.feat { display: grid; gap: 12px; margin-bottom: auto; max-width: 440px; }
+.feat div { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid rgba(122,167,255,.18);
+            border-radius: 10px; background: rgba(17,24,39,.55); backdrop-filter: blur(4px); }
+.feat .fi { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: rgba(79,140,255,.16); color: #7aa7ff; flex: none; }
+.feat b { display: block; font-size: 13.5px; } .feat small { color: #8b97b3; }
+.chain { display: flex; gap: 6px; align-items: center; margin-top: 28px; font-family: "JetBrains Mono", monospace; font-size: 11px; color: #7c89a8; flex-wrap: wrap; }
+.chain span { padding: 4px 8px; border: 1px solid rgba(122,167,255,.2); border-radius: 6px; background: rgba(17,24,39,.6); }
+.auth-form { display: grid; place-items: center; padding: 40px 24px; }
+.auth-box { width: 100%; max-width: 380px; }
+.auth-box h2 { font-size: 24px; margin: 0 0 6px; letter-spacing: -.01em; }
+.auth-box .sub { color: var(--muted); margin: 0 0 26px; }
+.field { margin-bottom: 16px; }
+.auth-box .btn-primary { width: 100%; justify-content: center; padding: 11px; font-size: 14.5px; }
+.secure-note { display: flex; gap: 8px; align-items: center; margin-top: 22px; padding: 10px 12px; border-radius: 8px;
+               background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); font-size: 12.5px; }
+.theme-fab { position: fixed; top: 16px; right: 16px; }
+@media (max-width: 900px) { .auth { grid-template-columns: 1fr; } .auth-hero { padding: 28px 20px; } .auth-hero h1 { font-size: 26px; margin-top: 28px; } .chain { display: none; } }
+{% endblock %}
+{% block public %}
+<button class="btn btn-ghost btn-sm theme-fab" type="button" onclick="toggleTheme()">{{ icon('moon', 15) }} Theme</button>
+<div class="auth">
+  <section class="auth-hero">
+    <div class="brand" style="padding:0">
+      <div class="brand-mark">{{ icon('shield-check', 20) }}</div>
+      <div><b>Provenance-Pro</b><small style="color:#8b97b3">{{ COMPANY_NAME }} · Secure Audit Platform</small></div>
+    </div>
+    <h1>Every action, <span>provably untampered.</span></h1>
+    <p>All file, database and authentication activity at {{ COMPANY_NAME }} is captured into a tamper-evident audit trail.</p>
+    <div class="feat">
+      <div><span class="fi">{{ icon('link', 16) }}</span><span><b>SHA-256 hash chain</b><small>Each event is cryptographically linked to the one before it.</small></span></div>
+      <div><span class="fi">{{ icon('layers', 16) }}</span><span><b>Merkle-sealed batches</b><small>Groups of events are sealed with a Merkle root for fast integrity proofs.</small></span></div>
+      <div><span class="fi">{{ icon('shield', 16) }}</span><span><b>8-point provenance verification</b><small>Modification, deletion, insertion, reordering and forgery are detected.</small></span></div>
+    </div>
+    <div class="chain"><span>GENESIS</span>→<span>H1 Login</span>→<span>H2 Auth</span>→<span>H3 Open File</span>→<span>…</span></div>
+  </section>
+  <section class="auth-form">
+    <div class="auth-box">
+      <h2>{{ 'Create your account' if mode == 'register' else 'Welcome back' }}</h2>
+      <p class="sub">{{ 'Join the ' ~ COMPANY_NAME ~ ' workspace.' if mode == 'register' else 'Sign in to the ' ~ COMPANY_NAME ~ ' workspace.' }}</p>
+      {{ flashes() }}
+      <form method="post">
+        <div class="field"><label for="u">Username</label><input id="u" name="username" autocomplete="username" required autofocus></div>
+        <div class="field"><label for="p">Password</label><input id="p" name="password" type="password"
+             autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}" required></div>
+        <button class="btn btn-primary">{{ icon('lock', 16) }} {{ 'Create account' if mode == 'register' else 'Sign in' }}</button>
+      </form>
+      <p class="muted" style="text-align:center;margin-top:18px">
+        {% if mode == 'login' %}New here? <a href="{{ url_for('register') }}">Create an account</a>
+        {% else %}Already have an account? <a href="{{ url_for('login') }}">Sign in</a>{% endif %}
+      </p>
+      <div class="secure-note">{{ icon('activity', 15) }} Sign-in attempts, including failures, are recorded with IP and timestamp.</div>
+    </div>
+  </section>
 </div>
 {% endblock %}

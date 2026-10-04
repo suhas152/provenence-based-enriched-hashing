@@ -11,15 +11,20 @@ def test_web_flow(tmp_path, monkeypatch):
 
     assert client.post("/register", data={"username": "dave", "password": "dave123"}).status_code == 302
     client.post("/login", data={"username": "dave", "password": "dave123"})
-    assert b"notes.txt" in client.get("/workspace").data
+    drive = client.get("/workspace").data
+    assert b"Employee_Handbook_2026.pdf" in drive and b"Payroll_Oct_2026.csv" in drive
+    pdf_id = dbmod.connect().execute("SELECT doc_id FROM Documents WHERE kind='pdf' LIMIT 1").fetchone()[0]
+    assert client.get(f"/files/{pdf_id}").status_code == 200  # Open File (PDF viewer)
+    raw = client.get(f"/files/{pdf_id}/raw")
+    assert raw.mimetype == "application/pdf" and raw.data.startswith(b"%PDF")
     # Edit without opening first is blocked by the transition rules
     doc_id = dbmod.connect().execute(
-        "SELECT d.doc_id FROM Documents d JOIN Users u ON u.user_id=d.owner_id "
-        "WHERE u.username='dave' LIMIT 1").fetchone()[0]
+        "SELECT doc_id FROM Documents WHERE kind='text' AND deleted=0 LIMIT 1").fetchone()[0]
+    client.get("/activity")  # Database Access, so an edit is not allowed next
     page = client.post(f"/files/{doc_id}/edit", follow_redirects=True).data
     assert b"Blocked by provenance rules" in page
     assert client.get(f"/files/{doc_id}").status_code == 200  # Open File
-    assert b"Saved." in client.post(f"/files/{doc_id}/edit", data={"content": "hi"},
+    assert b"Saved" in client.post(f"/files/{doc_id}/edit", data={"content": "hi"},
                                     follow_redirects=True).data
     client.get(f"/files/{doc_id}")
     assert b"Deleted" in client.post(f"/files/{doc_id}/delete", follow_redirects=True).data

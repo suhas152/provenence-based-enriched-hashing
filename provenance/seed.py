@@ -1,8 +1,9 @@
-"""Startup data: only the admin account. Demo users/activity are for tests."""
+"""Startup data: schema, company drive and the admin account. Demo users/activity are for tests."""
 import os
 import random
 
 from . import auth
+from .company import COMPANY_OWNER, seed_company_drive
 from .db import init_db, reset_db
 
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
@@ -11,12 +12,13 @@ DEMO_USERS = [("alice", "alice123", "192.168.1.21"), ("bob", "bob12345", "10.0.0
 
 
 def seed(conn, fresh=False):
-    """Create the schema and the admin account. The audit log starts with one
-    event: the admin's Register."""
+    """Create the schema, the shared company drive and the admin account.
+    The audit log starts with one event: the admin's Register."""
     if fresh:
         reset_db(conn)
     else:
         init_db(conn)
+    seed_company_drive(conn)
     if not conn.execute("SELECT COUNT(*) FROM Users").fetchone()[0]:
         auth.register_user(conn, ADMIN_USERNAME, ADMIN_PASSWORD, "127.0.0.1", role="admin")
 
@@ -24,8 +26,8 @@ def seed(conn, fresh=False):
 def _user_session(conn, username, password, ip, actions):
     user, sid = auth.login(conn, username, password, ip, "test-script")
     session = {"user_id": user["user_id"], "session_id": sid}
-    doc = conn.execute("SELECT name FROM Documents WHERE owner_id=? AND deleted=0",
-                       (user["user_id"],)).fetchone()
+    doc = conn.execute("SELECT name FROM Documents WHERE owner_id IN (?, ?) AND deleted=0",
+                       (user["user_id"], COMPANY_OWNER)).fetchone()
     for action in actions:
         details = "query=my_activity" if action == "Database Access" else f"doc={doc['name']}"
         auth.capture(conn, session, action, ip, details)

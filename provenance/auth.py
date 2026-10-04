@@ -7,7 +7,6 @@ from .context import record_event
 from .db import now, transaction
 
 SESSION_TIMEOUT = timedelta(minutes=30)
-SAMPLE_FILES = [("notes.txt", "Meeting notes"), ("report.txt", "Quarterly report draft")]
 
 
 class AuthError(Exception):
@@ -26,9 +25,6 @@ def register_user(conn, username, password, ip=None, role="user"):
             (username, generate_password_hash(password), role, now()))
         user_id = f"U{100 + cur.lastrowid}"
         conn.execute("UPDATE Users SET user_id=? WHERE id=?", (user_id, cur.lastrowid))
-        for name, content in SAMPLE_FILES:
-            conn.execute("INSERT INTO Documents (owner_id, name, content, updated_at) "
-                         "VALUES (?,?,?,?)", (user_id, name, content, now()))
         record_event(conn, "Register", user_id=user_id, ip_address=ip,
                      details=f"username={username}")
     return user_id

@@ -8,6 +8,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from provenance import auth, seed, tamper
 from provenance import db as dbmod
+from provenance.company import COMPANY_NAME, COMPANY_OWNER
 from provenance.context import TransitionError
 from provenance.db import connect, now
 from provenance.verify import verify_all
@@ -15,10 +16,11 @@ from provenance.verify import verify_all
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+app.jinja_env.globals.update(COMPANY_NAME=COMPANY_NAME, COMPANY_OWNER=COMPANY_OWNER)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)
 
 _c = connect()
-seed.seed(_c)  # creates schema + demo data on first start
+seed.seed(_c)  # schema, company drive and admin account on first start
 _c.close()
 
 
@@ -35,6 +37,14 @@ def _close(_exc):
 
 
 def ip():
+    """Client IP. Behind Render/Cloudflare the socket address is an internal proxy,
+    so prefer the headers those proxies set."""
+    for header in ("CF-Connecting-IP", "True-Client-IP"):
+        if request.headers.get(header):
+            return request.headers[header].strip()[:64]
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()[:64]
     return request.remote_addr or "unknown"
 
 
@@ -80,12 +90,17 @@ def capture(event_type, details=None):
         return False
 
 
-def own_doc(doc_id):
-    doc = db().execute("SELECT * FROM Documents WHERE doc_id=? AND owner_id=? AND deleted=0",
-                       (doc_id, g.user["user_id"])).fetchone()
+def get_doc(doc_id):
+    """A document the current user may access: the shared company drive or their own files."""
+    doc = db().execute("SELECT * FROM Documents WHERE doc_id=? AND deleted=0 AND owner_id IN (?, ?)",
+                       (doc_id, g.user["user_id"], COMPANY_OWNER)).fetchone()
     if doc is None:
         abort(404)
     return doc
+
+
+def doc_ref(doc):
+    return f"doc={doc['folder']}/{doc['name']}"
 
 
 # ---- Authentication -----------------------------------------------------------
@@ -130,53 +145,80 @@ def logout():
     return redirect(url_for("login"))
 
 
-# ---- User workspace (file + database events) ---------------------------------
+# ---- Company drive (file + database events) ------------------------------------
 @app.route("/workspace")
 @login_required
 def workspace():
-    docs = db().execute("SELECT * FROM Documents WHERE owner_id=? AND deleted=0 ORDER BY name",
-                        (g.user["user_id"],)).fetchall()
-    return render_template("workspace.html", docs=docs)
+    rows = db().execute(
+        "SELECT doc_id, owner_id, folder, name, kind, size, updated_at FROM Documents "
+        "WHERE deleted=0 AND owner_id IN (?, ?) ORDER BY folder, name",
+        (g.user["user_id"], COMPANY_OWNER)).fetchall()
+    folders = {}
+    for r in rows:
+        folders[r["folder"]] = folders.get(r["folder"], 0) + 1
+    current = request.args.get("folder")
+    docs = [r for r in rows if not current or r["folder"] == current]
+    return render_template("workspace.html", docs=docs, folders=folders, current=current,
+                           total=len(rows))
 
 
 @app.route("/files/new", methods=["POST"])
 @login_required
 def create_file():
     name = (request.form.get("name") or "").strip()[:60]
-    if name and capture("Create File", f"doc={name}"):
-        db().execute("INSERT INTO Documents (owner_id, name, content, updated_at) VALUES (?,?,?,?)",
-                     (g.user["user_id"], name, "", now()))
-    return redirect(url_for("workspace"))
+    if name and capture("Create File", f"doc=My Files/{name}"):
+        db().execute("INSERT INTO Documents (owner_id, folder, name, kind, content, size, updated_at) "
+                     "VALUES (?,?,?,?,?,?,?)", (g.user["user_id"], "My Files", name, "text", "", 0, now()))
+        flash(f"Created {name}.", "ok")
+    return redirect(url_for("workspace", folder="My Files"))
 
 
 @app.route("/files/<int:doc_id>")
 @login_required
 def open_file(doc_id):
-    doc = own_doc(doc_id)
-    if not capture("Open File", f"doc={doc['name']}"):
+    doc = get_doc(doc_id)
+    if not capture("Open File", doc_ref(doc)):
         return redirect(url_for("workspace"))
-    return render_template("file.html", doc=doc)
+    csv_rows = None
+    if doc["name"].lower().endswith(".csv"):
+        csv_rows = [line.split(",") for line in doc["content"].splitlines() if line.strip()]
+    return render_template("file.html", doc=doc, csv_rows=csv_rows)
+
+
+@app.route("/files/<int:doc_id>/raw")
+@login_required
+def raw_file(doc_id):
+    doc = get_doc(doc_id)
+    if doc["kind"] != "pdf":
+        abort(404)
+    resp = app.response_class(doc["data"], mimetype="application/pdf")
+    disposition = "attachment" if request.args.get("download") else "inline"
+    resp.headers["Content-Disposition"] = f'{disposition}; filename="{doc["name"]}"'
+    return resp
 
 
 @app.route("/files/<int:doc_id>/edit", methods=["POST"])
 @login_required
 def edit_file(doc_id):
-    doc = own_doc(doc_id)
-    if capture("Edit File", f"doc={doc['name']}"):
-        db().execute("UPDATE Documents SET content=?, updated_at=? WHERE doc_id=?",
-                     (request.form.get("content", ""), now(), doc_id))
-        flash("Saved.", "ok")
-    return redirect(url_for("workspace"))
+    doc = get_doc(doc_id)
+    if doc["kind"] != "text":
+        abort(400)
+    if capture("Edit File", doc_ref(doc)):
+        content = request.form.get("content", "")
+        db().execute("UPDATE Documents SET content=?, size=?, updated_at=? WHERE doc_id=?",
+                     (content, len(content.encode()), now(), doc_id))
+        flash(f"Saved {doc['name']}.", "ok")
+    return redirect(url_for("workspace", folder=doc["folder"]))
 
 
 @app.route("/files/<int:doc_id>/delete", methods=["POST"])
 @login_required
 def delete_file(doc_id):
-    doc = own_doc(doc_id)
-    if capture("Delete File", f"doc={doc['name']}"):
+    doc = get_doc(doc_id)
+    if capture("Delete File", doc_ref(doc)):
         db().execute("UPDATE Documents SET deleted=1, updated_at=? WHERE doc_id=?", (now(), doc_id))
         flash(f"Deleted {doc['name']}.", "ok")
-    return redirect(url_for("workspace"))
+    return redirect(url_for("workspace", folder=doc["folder"]))
 
 
 @app.route("/activity")
